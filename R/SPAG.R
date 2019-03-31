@@ -12,7 +12,14 @@ NULL
 #' uniform distribution.
 #' @param empiricalSample - number of companies used for the estimation of the average distance between companeis for which
 #' the distance index is being calculated.
-#' @param numberOfSamples -
+#' @param numberOfSamples - number of times the empirical sample should be calculated
+#' @param columnAreaName - if the provided shp is a spatial dataframe and the spatial data is spatially categorized
+#'  using columnAreaName the SPAG column is calculated separatedly for each category
+#' @param companiesProjection - this parameter sets the projection of companies data if it is in a different projection than the map
+#' @param CRSProjection - sets the end projection in which the data should be represented
+#' @param totalOnly - by default the SPAG Index is calculated for all company categories. Setting this value to TRUE calculates only the
+#' overall SPAG Index
+#' @param theoreticalDistributionType - chooses different reference distributions. Available distributions are "stratified", "nonaligned", "hexagonal", "clustered", "regular"
 #'
 #'
 #'
@@ -39,7 +46,7 @@ NULL
 #' @export
 
 SPAG <- function(companiesDF, shp, theoreticalSample=1000, empiricalSample=1000, numberOfSamples=1, columnAreaName,
-                 companiesProjection, CRSProjection, totalOnly=FALSE, theoreticalDistributionType="regular"){
+                 companiesProjection, CRSProjection, totalOnly=FALSE, theoreticalDistributionType="regular", circleAccuracy=50 ){
 
   currentWarning <- getOption("warn")
   options(warn = -1)
@@ -74,7 +81,7 @@ SPAG <- function(companiesDF, shp, theoreticalSample=1000, empiricalSample=1000,
   }
 
   if(missing(columnAreaName)){
-    result <- SPAGSingle(companiesDF, shp, theoreticalSample, empiricalSample, numberOfSamples, CRSProjection, totalOnly, theoreticalDistributionType)
+    result <- SPAGSingle(companiesDF, shp, theoreticalSample, empiricalSample, numberOfSamples, CRSProjection, totalOnly, theoreticalDistributionType, circleAccuracy)
     return(result)
   } else {
 
@@ -107,11 +114,11 @@ SPAG <- function(companiesDF, shp, theoreticalSample=1000, empiricalSample=1000,
 
 
 SPAGSingle <- function(companiesDF, shp, theoreticalSample=1000, empiricalSample=1000, numberOfSamples=1, CRSProjection,
-                       totalOnly, theoreticalDistributionType){
+                       totalOnly, theoreticalDistributionType, circleAccuracy){
 
   # Calculating the coverage part of SPAG index:
 
-  circles <-calcCircles(shp,companiesDF, CRSProjection, totalOnly)
+  circles <-calcCircles(shp,companiesDF, CRSProjection, totalOnly, circleAccuracy)
   CirclesUnionCategory <- list()
   circlesList <- list()
 
@@ -195,7 +202,7 @@ calcDistanceIndex <- function(coordsCategoryDF, region, categories,theoreticalSa
                        n <- nrow(coordsCategoryDF[coordsCategoryDF[,3] == x,])
                        if(n>1){
                          nCompanies <- min(theoreticalSample,n)
-                         theoreticalCompanies <- spsample(region, nCompanies, type="regular", offset = c(0,0))
+                         theoreticalCompanies <- spsample(region, nCompanies, type=theoreticalDistributionType, offset = c(0,0))
                          theoreticalDF <- as.matrix(as.data.frame(theoreticalCompanies))
                          theoreticalDist <- mean(dist(theoreticalDF))
                          theoreticalDist <- avgDist(theoreticalDF)
@@ -219,7 +226,7 @@ calcDistanceIndex <- function(coordsCategoryDF, region, categories,theoreticalSa
 
   n <- nrow(coordsCategoryDF)
   nCompanies <- min(theoreticalSample,n)
-  theoreticalCompanies <- spsample(region, nCompanies, type="regular")
+  theoreticalCompanies <- spsample(region, nCompanies, type=theoreticalDistributionType)
   theoreticalDF <- as.data.frame(theoreticalCompanies)
   theoreticalDist <-mean(dist(as.matrix(theoreticalCompanies@coords)))
 
@@ -236,7 +243,7 @@ calcDistanceIndex <- function(coordsCategoryDF, region, categories,theoreticalSa
   return(apply(IDistFULL,2,mean))
 }
 
-calcCircles <- function(region,companiesDF, CRSProjection, totalOnly){
+calcCircles <- function(region,companiesDF, CRSProjection, totalOnly, circleAccuracy){
   # Calculating base radius for other indexes
   # In order to do so I change the CRS to a system in which the area is not showed in degrees
   # as circles in those coordinates are oblate ellipses.
@@ -273,10 +280,10 @@ calcCircles <- function(region,companiesDF, CRSProjection, totalOnly){
 
   # New circles will appear as circluar in plot
   if (!totalOnly){
-  return(list("Categories" = gBuffer(xySP, quadsegs=50, byid=TRUE, width=vectorOfRadius),
-              "Total" = gBuffer(xySP, quadsegs=50, byid=TRUE, width=radiusVectorTotal)))
+  return(list("Categories" = gBuffer(xySP, quadsegs=circleAccuracy, byid=TRUE, width=vectorOfRadius),
+              "Total" = gBuffer(xySP, quadsegs=circleAccuracy, byid=TRUE, width=radiusVectorTotal)))
   } else {
-    return(list("Total" = gBuffer(xySP, quadsegs=50, byid=TRUE, width=radiusVectorTotal)))
+    return(list("Total" = gBuffer(xySP, quadsegs=circleAccuracy, byid=TRUE, width=radiusVectorTotal)))
   }
 }
 
