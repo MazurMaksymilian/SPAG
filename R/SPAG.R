@@ -226,10 +226,9 @@ calcDistanceIndex <- function(coordsCategoryDF, region, categories,theoreticalSa
 
   n <- nrow(coordsCategoryDF)
   nCompanies <- min(theoreticalSample,n)
-  theoreticalCompanies <- spsample(region, nCompanies, type=theoreticalDistributionType)
+  theoreticalCompanies <- spsample(region, nCompanies, type=theoreticalDistributionType, offset = c(0,0))
   theoreticalDF <- as.data.frame(theoreticalCompanies)
   theoreticalDist <-mean(dist(as.matrix(theoreticalCompanies@coords)))
-
   nCompanies <- min(empiricalSample,n)
   IDistTotal <- numeric(0)
 
@@ -375,4 +374,3 @@ plot.SPAG = function(x, category="Total", addCompanies=TRUE, circleUnion=FALSE){
 print.SPAG = function(x, ...){
   print(attr(x, "IndexDF") )
 }
-
